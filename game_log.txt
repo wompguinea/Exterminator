@@ -1,0 +1,37 @@
+8/06/2025 10:07:59 pm: Game constructor called
+8/06/2025 10:08:00 pm: Initializing game...
+8/06/2025 10:08:00 pm: Graphics settings applied
+8/06/2025 10:08:00 pm: Loading content...
+8/06/2025 10:08:00 pm: Loading idle texture...
+8/06/2025 10:08:00 pm: Loading walk texture...
+8/06/2025 10:08:00 pm: Loading attack texture...
+8/06/2025 10:08:00 pm: Error in LoadContent: Microsoft.Xna.Framework.Content.ContentLoadException: The content file was not found.
+ ---> System.IO.FileNotFoundException: Could not find file 'C:\Users\hinto\OneDrive\Desktop\Code\Exterminator\Exterminator\bin\Debug\net8.0\Content\attack.xnb'.
+File name: 'C:\Users\hinto\OneDrive\Desktop\Code\Exterminator\Exterminator\bin\Debug\net8.0\Content\attack.xnb'
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.CreateFile(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+   at Microsoft.Xna.Framework.TitleContainer.PlatformOpenStream(String safeName)
+   at Microsoft.Xna.Framework.TitleContainer.OpenStream(String name)
+   at Microsoft.Xna.Framework.Content.ContentManager.OpenStream(String assetName)
+   --- End of inner exception stack trace ---
+   at Microsoft.Xna.Framework.Content.ContentManager.OpenStream(String assetName)
+   at Microsoft.Xna.Framework.Content.ContentManager.ReadAsset[T](String assetName, Action`1 recordDisposableObject)
+   at Microsoft.Xna.Framework.Content.ContentManager.Load[T](String assetName)
+   at Exterminator.Game1.LoadContent() in C:\Users\hinto\OneDrive\Desktop\Code\Exterminator\Exterminator\Game1.cs:line 92
+8/06/2025 10:08:00 pm: Error in Initialize: Microsoft.Xna.Framework.Content.ContentLoadException: The content file was not found.
+ ---> System.IO.FileNotFoundException: Could not find file 'C:\Users\hinto\OneDrive\Desktop\Code\Exterminator\Exterminator\bin\Debug\net8.0\Content\attack.xnb'.
+File name: 'C:\Users\hinto\OneDrive\Desktop\Code\Exterminator\Exterminator\bin\Debug\net8.0\Content\attack.xnb'
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.CreateFile(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options)
+   at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+   at Microsoft.Xna.Framework.TitleContainer.PlatformOpenStream(String safeName)
+   at Microsoft.Xna.Framework.TitleContainer.OpenStream(String name)
+   at Microsoft.Xna.Framework.Content.ContentManager.OpenStream(String assetName)
+   --- End of inner exception stack trace ---
+   at Microsoft.Xna.Framework.Content.ContentManager.OpenStream(String assetName)
+   at Microsoft.Xna.Framework.Content.ContentManager.ReadAsset[T](String assetName, Action`1 recordDisposableObject)
+   at Microsoft.Xna.Framework.Content.ContentManager.Load[T](String assetName)
+   at Exterminator.Game1.LoadContent() in C:\Users\hinto\OneDrive\Desktop\Code\Exterminator\Exterminator\Game1.cs:line 92
+   at Microsoft.Xna.Framework.Game.Initialize()
+   at Exterminator.Game1.Initialize() in C:\Users\hinto\OneDrive\Desktop\Code\Exterminator\Exterminator\Game1.cs:line 67
