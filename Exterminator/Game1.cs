@@ -145,7 +145,7 @@ public class Game1 : Game
             Log("Creating cave wall collision map...");
             _caveWallCollision = new ColorCollisionMap(
                 _caveWallTexture, 
-                Vector2.Zero, // Zero offset, collision detection handles positioning
+                Vector2.Zero, // Position at (0,0) for the 800x600 play area
                 new Color(10, 10, 11), 5f);
 
             Log("Creating rocks...");
@@ -640,10 +640,28 @@ public class Game1 : Game
         }
         
         // Check if position overlaps with cave wall collision
+        // Use the same dynamic offset calculation as in CheckRockCollision
         Rectangle rockBounds = new Rectangle((int)position.X, (int)position.Y, 32, 32);
-        if (_caveWallCollision != null && _caveWallCollision.IsCollisionInArea(rockBounds))
+        if (_caveWallCollision != null)
         {
-            return false;
+            // Calculate the dynamic offset for the current screen size
+            Vector2 dynamicOffset = new Vector2(
+                (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width - 800) / 2f,
+                (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height - 600) / 2f
+            );
+            
+            // Adjust bounds to account for the dynamic visual offset
+            Rectangle adjustedBounds = new Rectangle(
+                (int)(rockBounds.X + dynamicOffset.X),
+                (int)(rockBounds.Y + dynamicOffset.Y),
+                rockBounds.Width,
+                rockBounds.Height
+            );
+            
+            if (_caveWallCollision.IsCollisionInArea(adjustedBounds))
+            {
+                return false;
+            }
         }
         
         // Check if position overlaps with existing rocks
