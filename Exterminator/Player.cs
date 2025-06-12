@@ -249,8 +249,17 @@ namespace Exterminator
                 _position += direction * _moveSpeed * (float)Game1.DeltaTime;
                 _isMoving = true;
                 
-                // Update direction based on movement
-                _currentDirection = GetDirectionFromVector(direction);
+                // Update direction based on movement - only 4 directions for sprites
+                if (Math.Abs(direction.X) > Math.Abs(direction.Y))
+                {
+                    // Horizontal movement is dominant
+                    _currentDirection = direction.X > 0 ? Direction.Right : Direction.Left;
+                }
+                else
+                {
+                    // Vertical movement is dominant
+                    _currentDirection = direction.Y > 0 ? Direction.Down : Direction.Up;
+                }
             }
             else
             {
@@ -278,8 +287,17 @@ namespace Exterminator
                     _position = newPosition;
                     _isMoving = true;
                     
-                    // Update direction based on movement
-                    _currentDirection = GetDirectionFromVector(direction);
+                    // Update direction based on movement - only 4 directions for sprites
+                    if (Math.Abs(direction.X) > Math.Abs(direction.Y))
+                    {
+                        // Horizontal movement is dominant
+                        _currentDirection = direction.X > 0 ? Direction.Right : Direction.Left;
+                    }
+                    else
+                    {
+                        // Vertical movement is dominant
+                        _currentDirection = direction.Y > 0 ? Direction.Down : Direction.Up;
+                    }
                 }
             }
             else

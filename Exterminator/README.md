@@ -95,32 +95,18 @@ dotnet run
 
 The game includes various visual assets:
 - **Character sprites** - Player and enemy animations
-- **Environment textures** - Cave floor, walls, and rock formations
+  (Bug sprites credited to Admurin: https://admurin.itch.io/,
+  Rocks by dustdfg: https://dustdfg.itch.io/,
+  hearts by gamedevshlok: https://gamedevshlok.itch.io/,
+  player by Retro Sprite Creator using art from Famitsu & EnterBrain)
+  
+- **Environment textures** - Cave floor, walls
 - **UI elements** - Hearts for health display, fonts for text
 - **Splash screen** - Professional game introduction
-
-## 🔧 Development
-
-### Adding New Features
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-### Code Style
-- Follow C# coding conventions
-- Use meaningful variable and method names
-- Add comments for complex logic
-- Keep methods focused and concise
 
 ## 📝 License
 
 This project is open source and available under the [MIT License](LICENSE).
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
 ## 📞 Support
 

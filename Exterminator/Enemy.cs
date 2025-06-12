@@ -442,10 +442,23 @@ namespace Exterminator
         {
             foreach (var boid in _boids)
             {
-                // Calculate source rectangle for ant sprite
-                Rectangle sourceRect = new Rectangle(0, 0, _frameWidth, _frameHeight);
+                // Only draw ants that are within the 800x600 playable area
+                if (boid.Position.X < 0 || boid.Position.X > 800 || 
+                    boid.Position.Y < 0 || boid.Position.Y > 600)
+                {
+                    continue; // Skip drawing ants outside the playable area
+                }
 
-                Vector2 drawPosition = boid.Position - new Vector2(_frameWidth / 2f, _frameHeight / 2f);
+                // Calculate rotation angle from velocity
+                float rotation = 0f;
+                if (boid.Velocity.LengthSquared() > 0.1f) // Only rotate if moving
+                {
+                    // Since the default sprite points top-right, we need to offset by -45 degrees (π/4)
+                    // Plus 90 degrees to the right (π/2)
+                    rotation = (float)Math.Atan2(boid.Velocity.Y, boid.Velocity.X) - MathHelper.PiOver4 + MathHelper.PiOver2;
+                }
+
+                Vector2 drawPosition = boid.Position;
                 if (offset.HasValue)
                 {
                     drawPosition += offset.Value;
@@ -454,10 +467,10 @@ namespace Exterminator
                 spriteBatch.Draw(
                     _texture,
                     drawPosition,
-                    sourceRect,
+                    null,
                     Color.White,
-                    0f,
-                    Vector2.Zero,
+                    rotation,
+                    new Vector2(_frameWidth / 2f, _frameHeight / 2f), // Center the sprite
                     1f,
                     SpriteEffects.None,
                     0f
