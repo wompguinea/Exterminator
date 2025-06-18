@@ -453,9 +453,11 @@ namespace Exterminator
                 float rotation = 0f;
                 if (boid.Velocity.LengthSquared() > 0.1f) // Only rotate if moving
                 {
-                    // Since the default sprite points top-right, we need to offset by -45 degrees (π/4)
-                    // Plus 90 degrees to the right (π/2)
-                    rotation = (float)Math.Atan2(boid.Velocity.Y, boid.Velocity.X) - MathHelper.PiOver4 + MathHelper.PiOver2;
+                    // Calculate the angle from velocity and adjust for the ant2.png orientation
+                    // ant2.png is rotated 45 degrees counter-clockwise and faces up initially
+                    // So we need to subtract 90 degrees (π/2) to align with velocity direction
+                    // Plus a smaller offset to fine-tune the rotation (22.5 degrees = π/8)
+                    rotation = (float)Math.Atan2(boid.Velocity.Y, boid.Velocity.X) - MathHelper.PiOver2 + MathHelper.Pi / 8f;
                 }
 
                 Vector2 drawPosition = boid.Position;

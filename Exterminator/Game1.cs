@@ -31,12 +31,26 @@ public class Game1 : Game
     private bool _gameOver = false;
     private bool _levelComplete = false;
     private bool _showSplashScreen = true; // Start with splash screen
+    private bool _showLevelDisplay = false; // Show level number on game start
+    private bool _showShop = false; // Show shop between levels
+    private float _levelDisplayTimer = 0f; // Timer for level display
+    private float _levelDisplayDuration = 3f; // Show level for 3 seconds
     private int _totalAntsKilled = 0;
     private int _currentLevel = 1; // Current level tracking
     private int _antsRequiredForLevel; // Calculated based on level
     private SpriteFont _font;
     private SpriteFont _titleFont;
     private Texture2D _heartTexture;
+    
+    // Shop variables
+    private Texture2D _lifeUpTexture;
+    private Texture2D _dmgUpTexture;
+    private int _playerDamage = 10; // Base damage
+    private int _maxLives = 3; // Maximum lives
+    
+    // God mode variables
+    private bool _godMode = false;
+    private bool _godModeKeyPressed = false; // Prevent key repeat
 
     public Game1()
     {
@@ -110,7 +124,7 @@ public class Game1 : Game
 
             // Load enemy texture
             Log("Loading enemy texture...");
-            _enemyTexture = Content.Load<Texture2D>("ant");
+            _enemyTexture = Content.Load<Texture2D>("ant2");
 
             // Load UI fonts
             Log("Loading font...");
@@ -135,6 +149,11 @@ public class Game1 : Game
             Log("Loading heart texture...");
             _heartTexture = Content.Load<Texture2D>("heart");
 
+            // Load shop textures
+            Log("Loading shop textures...");
+            _lifeUpTexture = Content.Load<Texture2D>("life_up");
+            _dmgUpTexture = Content.Load<Texture2D>("dmg_up");
+
             Log("Loading rocks texture...");
             _rocksTexture = Content.Load<Texture2D>("rocks");
 
@@ -143,10 +162,13 @@ public class Game1 : Game
             _caveWallTexture = Content.Load<Texture2D>("cave_wall");
 
             Log("Creating cave wall collision map...");
+            // Position collision map at (0,0) for the 800x600 play area
+            // Use hex color 0a0a0b (very dark gray/black) for wall collision
+            Color wallColor = new Color(10, 10, 11); // RGB values for 0a0a0b
             _caveWallCollision = new ColorCollisionMap(
                 _caveWallTexture, 
                 Vector2.Zero, // Position at (0,0) for the 800x600 play area
-                new Color(10, 10, 11), 5f);
+                wallColor, 10f); // Use 0a0a0b color with tolerance of 10
 
             Log("Creating rocks...");
             _rocks = new List<Rock>();
@@ -168,7 +190,7 @@ public class Game1 : Game
     {
         try
         {
-            Log("Update called");
+            // Log("Update called");
             DeltaTime = gameTime.ElapsedGameTime.TotalSeconds;
 
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
@@ -177,8 +199,20 @@ public class Game1 : Game
                 Exit();
             }
 
-            // Process player movement input (WASD only)
+            // Handle god mode toggle
             var keyboardState = Keyboard.GetState();
+            if (keyboardState.IsKeyDown(Keys.G) && !_godModeKeyPressed)
+            {
+                _godMode = !_godMode;
+                _godModeKeyPressed = true;
+                Log($"God mode {(_godMode ? "enabled" : "disabled")}");
+            }
+            else if (!keyboardState.IsKeyDown(Keys.G))
+            {
+                _godModeKeyPressed = false;
+            }
+
+            // Process player movement input (WASD only)
             Vector2 movement = Vector2.Zero;
 
             // Handle new game input
@@ -198,6 +232,39 @@ public class Game1 : Game
                 return; // Skip game logic while on splash screen
             }
 
+            // Handle level display timer
+            if (_showLevelDisplay)
+            {
+                _levelDisplayTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+                if (_levelDisplayTimer >= _levelDisplayDuration)
+                {
+                    _showLevelDisplay = false;
+                }
+                return; // Skip game logic while showing level display
+            }
+
+            // Handle shop input
+            if (_showShop)
+            {
+                if (keyboardState.IsKeyDown(Keys.D1)) // Purchase item 1 (Life Up)
+                {
+                    PurchaseLifeUp();
+                }
+                else if (keyboardState.IsKeyDown(Keys.D2)) // Purchase item 2 (Damage Up)
+                {
+                    PurchaseDamageUp();
+                }
+                else if (keyboardState.IsKeyDown(Keys.D3)) // Purchase item 3 (Extra Life)
+                {
+                    PurchaseExtraLife();
+                }
+                else if (keyboardState.IsKeyDown(Keys.Space) || keyboardState.IsKeyDown(Keys.Enter)) // Continue to next level
+                {
+                    ContinueToNextLevel();
+                }
+                return; // Skip game logic while in shop
+            }
+
             if (!_gameOver && !_levelComplete)
             {
                 if (keyboardState.IsKeyDown(Keys.W))
@@ -208,6 +275,12 @@ public class Game1 : Game
                     movement.X -= 1;
                 if (keyboardState.IsKeyDown(Keys.D))
                     movement.X += 1;
+
+                // Debug logging for movement input
+                if (movement != Vector2.Zero)
+                {
+                    Log($"Movement input detected: {movement}");
+                }
 
                 // Process bullet direction input (Arrow keys) - 360-degree precision
                 Vector2 bulletDirection = Vector2.Zero;
@@ -222,6 +295,12 @@ public class Game1 : Game
                     bulletDirection.X -= inputSensitivity;
                 if (keyboardState.IsKeyDown(Keys.Right))
                     bulletDirection.X += inputSensitivity;
+
+                // Debug logging for shooting input
+                if (bulletDirection != Vector2.Zero)
+                {
+                    Log($"Shooting input detected: {bulletDirection}");
+                }
 
                 // Normalize for consistent bullet speed
                 if (bulletDirection != Vector2.Zero)
@@ -253,9 +332,6 @@ public class Game1 : Game
             _player.Update(gameTime, bounds => CheckRockCollision(bounds, false));
             _enemy.Update(gameTime, _player.Position, bounds => CheckRockCollision(bounds, true));
             
-            // Debug logging
-            Log($"Player position: {_player.Position}, Enemy count: {_enemy.Boids.Count}");
-            
             // Check bullet-ant collisions
             _enemy.CheckBulletCollisions(_player.Bullets);
             
@@ -281,7 +357,7 @@ public class Game1 : Game
     {
         try
         {
-            Log("Draw called");
+            // Log("Draw called");
             GraphicsDevice.Clear(Color.Black);
 
             _spriteBatch.Begin();
@@ -289,6 +365,14 @@ public class Game1 : Game
             if (_showSplashScreen)
             {
                 DrawSplashScreen();
+            }
+            else if (_showLevelDisplay)
+            {
+                DrawLevelDisplay();
+            }
+            else if (_showShop)
+            {
+                DrawShop();
             }
             else
             {
@@ -346,6 +430,25 @@ public class Game1 : Game
         string scoreText = $"Score: {_score}";
         Vector2 scorePosition = new Vector2(10, 10);
         _spriteBatch.DrawString(_font, scoreText, scorePosition, Color.White);
+
+        // Draw god mode indicator
+        if (_godMode)
+        {
+            string godModeText = "GOD MODE";
+            Vector2 godModeSize = _font.MeasureString(godModeText);
+            Vector2 godModePosition = new Vector2(
+                (GraphicsDevice.Viewport.Width - godModeSize.X) / 2f,
+                10
+            );
+            
+            // Draw god mode text with red outline and yellow fill
+            Vector2 godModeOutlineOffset = new Vector2(1, 1);
+            _spriteBatch.DrawString(_font, godModeText, godModePosition + godModeOutlineOffset, Color.Red);
+            _spriteBatch.DrawString(_font, godModeText, godModePosition - godModeOutlineOffset, Color.Red);
+            _spriteBatch.DrawString(_font, godModeText, godModePosition + new Vector2(1, -1), Color.Red);
+            _spriteBatch.DrawString(_font, godModeText, godModePosition + new Vector2(-1, 1), Color.Red);
+            _spriteBatch.DrawString(_font, godModeText, godModePosition, Color.Yellow);
+        }
 
         // Draw health hearts
         DrawHearts();
@@ -468,8 +571,16 @@ public class Game1 : Game
 
             if (playerBounds.Intersects(antBounds))
             {
-                _lives--;
-                Log($"Player hit! Lives remaining: {_lives}");
+                // Don't lose lives if god mode is enabled
+                if (!_godMode)
+                {
+                    _lives--;
+                    Log($"Player hit! Lives remaining: {_lives}");
+                }
+                else
+                {
+                    Log("Player hit! God mode active - no damage taken");
+                }
                 
                 // Activate avoidance mode for all ants
                 _enemy.ActivateAvoidanceMode();
@@ -503,23 +614,12 @@ public class Game1 : Game
         // Exclude ants from cave wall collision
         if (!isAnt && _caveWallCollision != null)
         {
-            // Calculate the dynamic offset for the current screen size
-            Vector2 dynamicOffset = new Vector2(
-                (GraphicsDevice.Viewport.Width - 800) / 2f,
-                (GraphicsDevice.Viewport.Height - 600) / 2f
-            );
+            // Simple collision check - only check the center point of the player
+            Vector2 playerCenter = new Vector2(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2);
             
-            // Adjust bounds to account for the dynamic visual offset
-            Rectangle adjustedBounds = new Rectangle(
-                (int)(bounds.X + dynamicOffset.X),
-                (int)(bounds.Y + dynamicOffset.Y),
-                bounds.Width,
-                bounds.Height
-            );
-            
-            if (_caveWallCollision.IsCollisionInArea(adjustedBounds))
+            if (_caveWallCollision.IsCollisionAt(playerCenter))
             {
-                Log($"Cave wall collision detected at {bounds.Location} (adjusted: {adjustedBounds.Location})");
+                Log($"Cave wall collision detected at player center: {playerCenter}");
                 return true; // Collision detected
             }
         }
@@ -565,8 +665,8 @@ public class Game1 : Game
         // Check for level completion
         if (_totalAntsKilled >= _antsRequiredForLevel)
         {
-            _levelComplete = true;
-            Log("Level Complete! You've killed 100 ants!");
+            _showShop = true; // Show shop instead of immediately completing level
+            Log("Level Complete! Shop opened!");
         }
     }
 
@@ -577,6 +677,8 @@ public class Game1 : Game
         _gameOver = false;
         _levelComplete = false;
         _showSplashScreen = false; // Hide splash screen
+        _showLevelDisplay = true; // Show level number on game start
+        _levelDisplayTimer = 0f; // Timer for level display
         _totalAntsKilled = 0;
         _currentLevel = 1; // Reset to level 1
         
@@ -589,19 +691,23 @@ public class Game1 : Game
         // Clear all ants and restart spawning
         _enemy.Reset();
         
+        // Clear and recreate rocks
+        _rocks.Clear();
+        CreateRocks();
+        
         Log("New game started");
     }
 
     private int CalculateRequiredAntsForLevel(int level)
     {
-        // Difficulty formula: Base 50 ants + 25 per level, with some variation
-        // Level 1: 75 ants
-        // Level 2: 100 ants  
-        // Level 3: 125 ants
-        // Level 4: 150 ants
+        // Simplified difficulty formula: 25 ants for level 1
+        // Level 1: 25 ants
+        // Level 2: 50 ants  
+        // Level 3: 75 ants
+        // Level 4: 100 ants
         // etc.
         
-        int baseAnts = 50;
+        int baseAnts = 25;
         int antsPerLevel = 25;
         
         return baseAnts + (level - 1) * antsPerLevel;
@@ -609,6 +715,7 @@ public class Game1 : Game
 
     private void CreateRocks()
     {
+        Log("Creating rocks...");
         for (int i = 0; i < 10; i++)
         {
             Vector2 position;
@@ -617,7 +724,8 @@ public class Game1 : Game
             
             do
             {
-                position = new Vector2(Random.Next(50, 750), Random.Next(50, 550));
+                // Expand the valid area for rock placement
+                position = new Vector2(Random.Next(100, 700), Random.Next(100, 500));
                 attempts++;
             } while (!IsValidRockPosition(position) && attempts < maxAttempts);
             
@@ -626,8 +734,14 @@ public class Game1 : Game
             {
                 int rockType = Random.Next(1, 7); // Random rock type 1-6
                 _rocks.Add(new Rock(_rocksTexture, position, rockType));
+                Log($"Rock {i} placed at {position}");
+            }
+            else
+            {
+                Log($"Failed to place rock {i} after {maxAttempts} attempts");
             }
         }
+        Log($"Total rocks created: {_rocks.Count}");
     }
 
     private bool IsValidRockPosition(Vector2 position)
@@ -636,43 +750,48 @@ public class Game1 : Game
         Vector2 playerSpawn = new Vector2(400, 300);
         if (Vector2.Distance(position, playerSpawn) < 100f)
         {
+            Log($"Rock position too close to player spawn at {position}");
             return false;
         }
         
+        // Temporarily disable cave wall collision check for rock placement
+        // to ensure rocks can be created
+        /*
         // Check if position overlaps with cave wall collision
-        // Use the same dynamic offset calculation as in CheckRockCollision
-        Rectangle rockBounds = new Rectangle((int)position.X, (int)position.Y, 32, 32);
+        // Use a very lenient check - check multiple points around the rock
         if (_caveWallCollision != null)
         {
-            // Calculate the dynamic offset for the current screen size
-            Vector2 dynamicOffset = new Vector2(
-                (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width - 800) / 2f,
-                (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height - 600) / 2f
-            );
+            // Check multiple points around the rock to be more lenient
+            Vector2[] checkPoints = {
+                position + new Vector2(16, 16),  // Center
+                position + new Vector2(8, 16),   // Left center
+                position + new Vector2(24, 16),  // Right center
+                position + new Vector2(16, 8),   // Top center
+                position + new Vector2(16, 24)   // Bottom center
+            };
             
-            // Adjust bounds to account for the dynamic visual offset
-            Rectangle adjustedBounds = new Rectangle(
-                (int)(rockBounds.X + dynamicOffset.X),
-                (int)(rockBounds.Y + dynamicOffset.Y),
-                rockBounds.Width,
-                rockBounds.Height
-            );
-            
-            if (_caveWallCollision.IsCollisionInArea(adjustedBounds))
+            foreach (var point in checkPoints)
             {
-                return false;
+                if (_caveWallCollision.IsCollisionAt(point))
+                {
+                    Log($"Rock position blocked by cave wall at {position}, collision at {point}");
+                    return false;
+                }
             }
         }
+        */
         
         // Check if position overlaps with existing rocks
         foreach (var existingRock in _rocks)
         {
             if (Vector2.Distance(position, existingRock.Position) < 50f)
             {
+                Log($"Rock position too close to existing rock at {position}");
                 return false;
             }
         }
         
+        Log($"Rock position valid at {position}");
         return true;
     }
 
@@ -715,6 +834,15 @@ public class Game1 : Game
                 (GraphicsDevice.Viewport.Width - subtitleSize.X) / 2f,
                 titlePosition.Y + titleSize.Y + 20
             );
+            
+            // Draw subtitle with black outline and white fill
+            Vector2 subtitleOutlineOffset = new Vector2(1, 1);
+            _spriteBatch.DrawString(_font, subtitleText, subtitlePosition + subtitleOutlineOffset, Color.Black);
+            _spriteBatch.DrawString(_font, subtitleText, subtitlePosition - subtitleOutlineOffset, Color.Black);
+            _spriteBatch.DrawString(_font, subtitleText, subtitlePosition + new Vector2(1, -1), Color.Black);
+            _spriteBatch.DrawString(_font, subtitleText, subtitlePosition + new Vector2(-1, 1), Color.Black);
+            
+            // Draw main text (white)
             _spriteBatch.DrawString(_font, subtitleText, subtitlePosition, Color.White);
         }
 
@@ -727,7 +855,16 @@ public class Game1 : Game
                 (GraphicsDevice.Viewport.Width - instructionSize.X) / 2f,
                 titlePosition.Y + titleSize.Y + 80
             );
-            _spriteBatch.DrawString(_font, instructionText, instructionPosition, Color.LightGray);
+            
+            // Draw instruction text with black outline and white fill
+            Vector2 instructionOutlineOffset = new Vector2(1, 1);
+            _spriteBatch.DrawString(_font, instructionText, instructionPosition + instructionOutlineOffset, Color.Black);
+            _spriteBatch.DrawString(_font, instructionText, instructionPosition - instructionOutlineOffset, Color.Black);
+            _spriteBatch.DrawString(_font, instructionText, instructionPosition + new Vector2(1, -1), Color.Black);
+            _spriteBatch.DrawString(_font, instructionText, instructionPosition + new Vector2(-1, 1), Color.Black);
+            
+            // Draw main text (white)
+            _spriteBatch.DrawString(_font, instructionText, instructionPosition, Color.White);
             
             string controlsText = "WASD to Move | Arrow Keys to Shoot";
             Vector2 controlsSize = _font.MeasureString(controlsText);
@@ -735,7 +872,211 @@ public class Game1 : Game
                 (GraphicsDevice.Viewport.Width - controlsSize.X) / 2f,
                 instructionPosition.Y + instructionSize.Y + 20
             );
-            _spriteBatch.DrawString(_font, controlsText, controlsPosition, Color.LightGray);
+            
+            // Draw controls text with black outline and white fill
+            Vector2 controlsOutlineOffset = new Vector2(1, 1);
+            _spriteBatch.DrawString(_font, controlsText, controlsPosition + controlsOutlineOffset, Color.Black);
+            _spriteBatch.DrawString(_font, controlsText, controlsPosition - controlsOutlineOffset, Color.Black);
+            _spriteBatch.DrawString(_font, controlsText, controlsPosition + new Vector2(1, -1), Color.Black);
+            _spriteBatch.DrawString(_font, controlsText, controlsPosition + new Vector2(-1, 1), Color.Black);
+            
+            // Draw main text (white)
+            _spriteBatch.DrawString(_font, controlsText, controlsPosition, Color.White);
         }
+    }
+
+    private void DrawLevelDisplay()
+    {
+        if (_titleFont == null) return;
+
+        // Draw level display
+        string levelText = $"Level {_currentLevel}";
+        Vector2 levelSize = _titleFont.MeasureString(levelText);
+        Vector2 levelPosition = new Vector2(
+            (GraphicsDevice.Viewport.Width - levelSize.X) / 2f,
+            (GraphicsDevice.Viewport.Height - levelSize.Y) / 2f - 100
+        );
+        
+        // Draw level with black outline and yellow fill
+        // Draw outline (black)
+        Vector2 outlineOffset = new Vector2(2, 2);
+        _spriteBatch.DrawString(_titleFont, levelText, levelPosition + outlineOffset, Color.Black);
+        _spriteBatch.DrawString(_titleFont, levelText, levelPosition - outlineOffset, Color.Black);
+        _spriteBatch.DrawString(_titleFont, levelText, levelPosition + new Vector2(2, -2), Color.Black);
+        _spriteBatch.DrawString(_titleFont, levelText, levelPosition + new Vector2(-2, 2), Color.Black);
+        
+        // Draw main text (yellow)
+        _spriteBatch.DrawString(_titleFont, levelText, levelPosition, Color.Yellow);
+    }
+
+    private void DrawShop()
+    {
+        if (_titleFont == null || _font == null) return;
+
+        // Draw shop title
+        string shopTitle = "SHOP";
+        Vector2 titleSize = _titleFont.MeasureString(shopTitle);
+        Vector2 titlePosition = new Vector2(
+            (GraphicsDevice.Viewport.Width - titleSize.X) / 2f,
+            50
+        );
+        
+        // Draw title with black outline and yellow fill
+        Vector2 titleOutlineOffset = new Vector2(2, 2);
+        _spriteBatch.DrawString(_titleFont, shopTitle, titlePosition + titleOutlineOffset, Color.Black);
+        _spriteBatch.DrawString(_titleFont, shopTitle, titlePosition - titleOutlineOffset, Color.Black);
+        _spriteBatch.DrawString(_titleFont, shopTitle, titlePosition + new Vector2(2, -2), Color.Black);
+        _spriteBatch.DrawString(_titleFont, shopTitle, titlePosition + new Vector2(-2, 2), Color.Black);
+        _spriteBatch.DrawString(_titleFont, shopTitle, titlePosition, Color.Yellow);
+
+        // Draw money display
+        string moneyText = $"Money: ${_score}";
+        Vector2 moneySize = _font.MeasureString(moneyText);
+        Vector2 moneyPosition = new Vector2(
+            (GraphicsDevice.Viewport.Width - moneySize.X) / 2f,
+            titlePosition.Y + titleSize.Y + 20
+        );
+        
+        // Draw money with black outline and white fill
+        Vector2 moneyOutlineOffset = new Vector2(1, 1);
+        _spriteBatch.DrawString(_font, moneyText, moneyPosition + moneyOutlineOffset, Color.Black);
+        _spriteBatch.DrawString(_font, moneyText, moneyPosition - moneyOutlineOffset, Color.Black);
+        _spriteBatch.DrawString(_font, moneyText, moneyPosition + new Vector2(1, -1), Color.Black);
+        _spriteBatch.DrawString(_font, moneyText, moneyPosition + new Vector2(-1, 1), Color.Black);
+        _spriteBatch.DrawString(_font, moneyText, moneyPosition, Color.White);
+
+        // Calculate shop item positions
+        int itemSpacing = 200;
+        int startX = (GraphicsDevice.Viewport.Width - (itemSpacing * 2)) / 2;
+        int itemY = (int)(moneyPosition.Y + moneySize.Y + 50);
+
+        // Draw item 1: Life Up
+        DrawShopItem(1, "Life Up", "$50", _lifeUpTexture, startX, itemY, _score >= 50);
+
+        // Draw item 2: Damage Up
+        DrawShopItem(2, "Damage Up", "$75", _dmgUpTexture, startX + itemSpacing, itemY, _score >= 75);
+
+        // Draw item 3: Extra Life
+        DrawShopItem(3, "Extra Life", "$100", _lifeUpTexture, startX + itemSpacing * 2, itemY, _score >= 100);
+
+        // Draw instructions
+        string instructionText = "Press SPACE or ENTER to Continue";
+        Vector2 instructionSize = _font.MeasureString(instructionText);
+        Vector2 instructionPosition = new Vector2(
+            (GraphicsDevice.Viewport.Width - instructionSize.X) / 2f,
+            GraphicsDevice.Viewport.Height - 100
+        );
+        
+        // Draw instructions with black outline and white fill
+        Vector2 instructionOutlineOffset = new Vector2(1, 1);
+        _spriteBatch.DrawString(_font, instructionText, instructionPosition + instructionOutlineOffset, Color.Black);
+        _spriteBatch.DrawString(_font, instructionText, instructionPosition - instructionOutlineOffset, Color.Black);
+        _spriteBatch.DrawString(_font, instructionText, instructionPosition + new Vector2(1, -1), Color.Black);
+        _spriteBatch.DrawString(_font, instructionText, instructionPosition + new Vector2(-1, 1), Color.Black);
+        _spriteBatch.DrawString(_font, instructionText, instructionPosition, Color.White);
+    }
+
+    private void DrawShopItem(int itemNumber, string itemName, string price, Texture2D icon, int x, int y, bool canAfford)
+    {
+        if (_font == null) return;
+
+        // Draw item background/box
+        Rectangle itemBox = new Rectangle(x, y, 150, 120);
+        Color boxColor = canAfford ? Color.DarkGreen : Color.DarkRed;
+        _spriteBatch.Draw(_heartTexture, itemBox, boxColor); // Using heart texture as placeholder for box
+
+        // Draw item number
+        string numberText = $"{itemNumber}";
+        Vector2 numberSize = _font.MeasureString(numberText);
+        Vector2 numberPosition = new Vector2(x + 10, y + 10);
+        _spriteBatch.DrawString(_font, numberText, numberPosition, Color.White);
+
+        // Draw item icon
+        if (icon != null)
+        {
+            Vector2 iconPosition = new Vector2(x + 75 - icon.Width / 2, y + 30);
+            _spriteBatch.Draw(icon, iconPosition, Color.White);
+        }
+
+        // Draw item name
+        Vector2 nameSize = _font.MeasureString(itemName);
+        Vector2 namePosition = new Vector2(x + 75 - nameSize.X / 2, y + 70);
+        _spriteBatch.DrawString(_font, itemName, namePosition, Color.White);
+
+        // Draw price
+        Vector2 priceSize = _font.MeasureString(price);
+        Vector2 pricePosition = new Vector2(x + 75 - priceSize.X / 2, y + 90);
+        Color priceColor = canAfford ? Color.Green : Color.Red;
+        _spriteBatch.DrawString(_font, price, pricePosition, priceColor);
+    }
+
+    private void PurchaseLifeUp()
+    {
+        int cost = 50;
+        if (_score >= cost)
+        {
+            _score -= cost;
+            _maxLives++;
+            _lives = Math.Min(_lives + 1, _maxLives); // Add 1 life, but don't exceed max
+            Log($"Purchased Life Up! Max lives: {_maxLives}, Current lives: {_lives}");
+        }
+        else
+        {
+            Log("Not enough money for Life Up!");
+        }
+    }
+
+    private void PurchaseDamageUp()
+    {
+        int cost = 75;
+        if (_score >= cost)
+        {
+            _score -= cost;
+            _playerDamage += 5;
+            Log($"Purchased Damage Up! Damage: {_playerDamage}");
+        }
+        else
+        {
+            Log("Not enough money for Damage Up!");
+        }
+    }
+
+    private void PurchaseExtraLife()
+    {
+        int cost = 100;
+        if (_score >= cost)
+        {
+            _score -= cost;
+            _lives = Math.Min(_lives + 1, _maxLives);
+            Log($"Purchased Extra Life! Current lives: {_lives}");
+        }
+        else
+        {
+            Log("Not enough money for Extra Life!");
+        }
+    }
+
+    private void ContinueToNextLevel()
+    {
+        _showShop = false;
+        _currentLevel++;
+        _totalAntsKilled = 0;
+        _antsRequiredForLevel = CalculateRequiredAntsForLevel(_currentLevel);
+        
+        // Reset player position
+        _player.ResetPosition(new Vector2(400, 300));
+        
+        // Clear all ants and restart spawning
+        _enemy.Reset();
+        
+        // Clear and recreate rocks
+        _rocks.Clear();
+        CreateRocks();
+        
+        // Show level display for next level
+        _showLevelDisplay = true;
+        _levelDisplayTimer = 0f;
+        
+        Log($"Continuing to Level {_currentLevel}");
     }
 }

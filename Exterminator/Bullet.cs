@@ -12,7 +12,7 @@ namespace Exterminator
         private bool _isActive = true;
         private float _lifetime = 3f; // Bullets disappear after 3 seconds
         private float _currentLifetime = 0f;
-        private const float BULLET_SIZE = 4f;
+        private const float BULLET_SIZE = 8f; // Increased size for plasma blast effect
 
         public Bullet(Vector2 startPosition, Vector2 velocity)
         {
@@ -104,7 +104,7 @@ namespace Exterminator
                 null,
                 Color.White,
                 0f,
-                new Vector2(BULLET_SIZE / 2f, BULLET_SIZE / 2f),
+                new Vector2(BULLET_SIZE, BULLET_SIZE),
                 1f,
                 SpriteEffects.None,
                 0f
@@ -113,21 +113,59 @@ namespace Exterminator
 
         private Texture2D CreateBulletTexture(GraphicsDevice graphicsDevice)
         {
-            // Create a simple circular bullet texture
-            int size = (int)BULLET_SIZE;
+            // Create a plasma blast texture with bright center and glow effect
+            int size = (int)BULLET_SIZE * 2; // Make it slightly larger for better plasma effect
             Texture2D texture = new Texture2D(graphicsDevice, size, size);
             Color[] colorData = new Color[size * size];
+
+            Vector2 center = new Vector2(size / 2f, size / 2f);
+            float maxDistance = size / 2f;
 
             for (int x = 0; x < size; x++)
             {
                 for (int y = 0; y < size; y++)
                 {
                     int index = x + y * size;
-                    float distance = Vector2.Distance(new Vector2(x, y), new Vector2(size / 2f, size / 2f));
+                    float distance = Vector2.Distance(new Vector2(x, y), center);
                     
-                    if (distance <= size / 2f)
+                    if (distance <= maxDistance)
                     {
-                        colorData[index] = Color.White;
+                        // Create plasma effect with multiple layers
+                        float normalizedDistance = distance / maxDistance;
+                        
+                        // Bright cyan/blue center
+                        if (normalizedDistance < 0.3f)
+                        {
+                            float intensity = 1f - (normalizedDistance / 0.3f);
+                            colorData[index] = new Color(
+                                (byte)(100 + 155 * intensity), // Blue component
+                                (byte)(200 + 55 * intensity),  // Green component (cyan)
+                                (byte)(255),                   // Full blue
+                                (byte)(255 * intensity)        // Alpha
+                            );
+                        }
+                        // White glow around center
+                        else if (normalizedDistance < 0.6f)
+                        {
+                            float intensity = 1f - ((normalizedDistance - 0.3f) / 0.3f);
+                            colorData[index] = new Color(
+                                (byte)(200 + 55 * intensity), // White with blue tint
+                                (byte)(220 + 35 * intensity), // White with slight green tint
+                                (byte)(255),                   // Full blue
+                                (byte)(200 * intensity)        // Alpha
+                            );
+                        }
+                        // Outer glow
+                        else
+                        {
+                            float intensity = 1f - ((normalizedDistance - 0.6f) / 0.4f);
+                            colorData[index] = new Color(
+                                (byte)(100 + 100 * intensity), // Blue
+                                (byte)(150 + 70 * intensity),  // Cyan
+                                (byte)(200 + 55 * intensity),  // Blue
+                                (byte)(100 * intensity)        // Alpha
+                            );
+                        }
                     }
                     else
                     {
